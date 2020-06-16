@@ -1,3 +1,11 @@
+plugins {
+    id("com.apollographql.apollo").version("2.2.0")
+}
+
+repositories {
+    jcenter()
+}
+
 apply plugin: 'com.android.application'
 
 apply plugin: 'kotlin-android'
@@ -7,6 +15,10 @@ apply plugin: 'kotlin-android-extensions'
 android {
     compileSdkVersion 29
     buildToolsVersion "29.0.2"
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
     defaultConfig {
         applicationId "com.example.batterymanager"
         minSdkVersion 15
@@ -33,4 +45,13 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
+
+    implementation("com.apollographql.apollo:apollo-runtime:2.2.0")
+
+    // optional: for coroutines support
+    implementation("com.apollographql.apollo:apollo-coroutines-support:2.2.0")
+}
+
+apollo {
+    generateKotlinModels.set(true)
 }

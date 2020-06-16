@@ -69,9 +69,7 @@ class MainActivity : AppCompatActivity() {
 
             currentAmps.text = timeRemaining.toString()
 
-
-
-//            currentAmps.text = batteryCurrent.toString()
+            //TODO: update aws database with this info
 
             mainHandler.postDelayed(this, delay.toLong())
         }

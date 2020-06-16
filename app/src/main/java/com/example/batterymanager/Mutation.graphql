@@ -1,0 +1,16 @@
+mutation createInput($timeRemaining:String!,$batteryPercentage:Int!,$temperature:String!,$isCharging:Boolean!,$userId:ID!){
+    createBatteryRecord(input: {
+        timeRemaining: $timeRemaining
+        batteryPercentage: $batteryPercentage
+        temperature: $temperature
+        isCharging: $isCharging
+    }, userId: $userId) {
+        id
+        timeCreated
+        user{
+            name
+            id
+        }
+        temperature
+    }
+}
