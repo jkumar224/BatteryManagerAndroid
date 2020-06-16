@@ -55,56 +55,29 @@ class MainActivity : AppCompatActivity() {
 
             batteryTemperature.text = temperature.toString().plus("*C")
 
-            val batteryCurrent = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                intent.getIntExtra(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW.toString(), -1)
+            val batteryManager: BatteryManager = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                applicationContext.getSystemService(Context.BATTERY_SERVICE)
             } else {
-                0
-            })
+                null
+            }) as BatteryManager
 
-            currentAmps.text = batteryCurrent.toString()
+            val timeRemaining: Long = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                batteryManager.computeChargeTimeRemaining()
+            } else {
+                -1
+            }
+
+            currentAmps.text = timeRemaining.toString()
+
+
+
+//            currentAmps.text = batteryCurrent.toString()
 
             mainHandler.postDelayed(this, delay.toLong())
         }
     }
 
-    override fun onStart() {
-        val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
-            applicationContext.registerReceiver(null, ifilter)
-        }
-
-        val status: Int = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-
-
-        val isCharging: Boolean = status == BatteryManager.BATTERY_STATUS_CHARGING
-                || status == BatteryManager.BATTERY_STATUS_FULL
-
-        chargeStatus.text = isCharging.toString()
-
-        val batteryPct: Float? = batteryStatus?.let { intent ->
-            val level: Int = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-            val scale: Int = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-            level * 100 / scale.toFloat()
-        }
-
-        batteryPercentage.text = batteryPct.toString()
-
-        val temperature: Float? = ((batteryStatus?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0))?.div(10))?.toFloat()
-
-        batteryTemperature.text = temperature.toString().plus("*C")
-
-        val batteryCurrent = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            intent.getIntExtra(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW.toString(), -1)
-        } else {
-            0
-        })
-
-        currentAmps.text = batteryCurrent.toString()
-        
-        super.onStart()
-    }
-
     override fun onResume() {
-
         mainHandler.post(updateBatteryStuff)
 
         super.onResume()
@@ -113,11 +86,6 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         mainHandler.removeCallbacks(updateBatteryStuff)
         super.onPause()
-    }
-
-    override fun onStop() {
-        applicationContext.unregisterReceiver(null)
-        super.onStop()
     }
 
 
