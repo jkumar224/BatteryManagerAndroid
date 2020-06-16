@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">BatteryManager</string>
+    <string name="action_settings">Settings</string>
+    <string name="charging_status">Charging Status</string>
+    <string name="battery_percentage">Battery Percentage</string>
+    <string name="battery_temp">Battery Temp</string>
+    <string name="battery_current">Battery Current</string>
+</resources>
