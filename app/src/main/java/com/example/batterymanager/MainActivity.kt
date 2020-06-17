@@ -18,6 +18,9 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
 import okhttp3.OkHttpClient
+import java.text.DecimalFormat
+import java.time.LocalTime
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
@@ -78,12 +81,12 @@ class MainActivity : AppCompatActivity() {
                 -1
             }
 
-            currentAmps.text = timeRemaining.toString()
+            currentAmps.text = convertMicroToHHMMSS(timeRemaining)
 
             createClient().flatMapCompletable { client: ApolloClient ->
                 createEvent(
                     client,
-                    timeRemaining.toString(),
+                    convertMicroToHHMMSS(timeRemaining),
                     batteryPct!!.toInt(),
                     temperature.toString(),
                     isCharging,
@@ -96,6 +99,20 @@ class MainActivity : AppCompatActivity() {
 
             mainHandler.postDelayed(this, delay.toLong())
         }
+    }
+
+    private fun convertMicroToHHMMSS(millis: Long): String {
+        val formatter = DecimalFormat("00")
+
+        val hour = TimeUnit.MILLISECONDS.toHours(millis)
+        val formattedHour = formatter.format(hour)
+        val minute = TimeUnit.MILLISECONDS.toMinutes(millis) % TimeUnit.HOURS.toMinutes(1)
+        val formattedMinute = formatter.format(minute)
+        val second = TimeUnit.MILLISECONDS.toSeconds(millis) % TimeUnit.MINUTES.toSeconds(1)
+        val formattedSecond = formatter.format(second)
+
+
+        return formattedHour.plus(":").plus(formattedMinute).plus(":").plus(formattedSecond)
     }
 
     private fun createEvent(
