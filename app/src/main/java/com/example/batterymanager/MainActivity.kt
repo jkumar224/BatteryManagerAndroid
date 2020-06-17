@@ -1,22 +1,28 @@
 package com.example.batterymanager
 
-import android.content.BroadcastReceiver
+import CreateInputMutation
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.*
-import com.google.android.material.snackbar.Snackbar
-import androidx.appcompat.app.AppCompatActivity
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-
+import androidx.appcompat.app.AppCompatActivity
+import com.apollographql.apollo.ApolloClient
+import com.apollographql.apollo.rx3.rxMutate
+import com.google.android.material.snackbar.Snackbar
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
+import okhttp3.OkHttpClient
 
 class MainActivity : AppCompatActivity() {
 
     val mainHandler = Handler(Looper.getMainLooper())
-    val delay: Int = 10*1000 //one second = 1000 milliseconds
+    val delay: Int = 10 * 1000 //one second = 1000 milliseconds
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,11 +35,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val updateBatteryStuff = object: Runnable {
+    private val updateBatteryStuff = object : Runnable {
         override fun run() {
-            val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
-                applicationContext.registerReceiver(null, ifilter)
-            }
+            val batteryStatus: Intent? =
+                IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
+                    applicationContext.registerReceiver(null, ifilter)
+                }
 
             val status: Int = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
 
@@ -51,15 +58,19 @@ class MainActivity : AppCompatActivity() {
 
             batteryPercentage.text = batteryPct.toString()
 
-            val temperature: Float? = ((batteryStatus?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0))?.div(10))?.toFloat()
+            val temperature: Float? = ((batteryStatus?.getIntExtra(
+                BatteryManager.EXTRA_TEMPERATURE,
+                0
+            ))?.div(10))?.toFloat()
 
             batteryTemperature.text = temperature.toString().plus("*C")
 
-            val batteryManager: BatteryManager = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                applicationContext.getSystemService(Context.BATTERY_SERVICE)
-            } else {
-                null
-            }) as BatteryManager
+            val batteryManager: BatteryManager =
+                (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    applicationContext.getSystemService(Context.BATTERY_SERVICE)
+                } else {
+                    null
+                }) as BatteryManager
 
             val timeRemaining: Long = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 batteryManager.computeChargeTimeRemaining()
@@ -69,10 +80,64 @@ class MainActivity : AppCompatActivity() {
 
             currentAmps.text = timeRemaining.toString()
 
-            //TODO: update aws database with this info
+            createClient().flatMapCompletable { client: ApolloClient ->
+                createEvent(
+                    client,
+                    timeRemaining.toString(),
+                    batteryPct!!.toInt(),
+                    temperature.toString(),
+                    isCharging,
+                    userId = "a1fe4c97-773d-4724-bc3b-379197cd25e9"
+                )
+            }
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .blockingAwait()
 
             mainHandler.postDelayed(this, delay.toLong())
         }
+    }
+
+    private fun createEvent(
+        client: ApolloClient, timeRemaining: String,
+        batteryPercentage: Int,
+        temperature: String,
+        isCharging: Boolean,
+        userId: String
+    ): Completable {
+        return client
+            .rxMutate(
+                CreateInputMutation(
+                    timeRemaining,
+                    batteryPercentage,
+                    temperature,
+                    isCharging,
+                    userId
+                )
+            )
+            .doOnSuccess { response ->
+                Log.i("Apollo", "Created an event: $response")
+            }
+            .doOnError { failure ->
+                Log.w("Apollo", "Failed to create an event.", failure)
+            }
+            .ignoreElement()
+    }
+
+    private fun createClient(): Single<ApolloClient> {
+        return Single.just(ApolloClient.builder()
+            .serverUrl("https://ptqvxc7if5h5rbvcony6da3ivi.appsync-api.us-east-2.amazonaws.com/graphql")
+            .okHttpClient(OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    chain.proceed(
+                        chain.request().newBuilder()
+                            .addHeader("x-api-key", secretKey)
+                            .build()
+                    )
+                }
+                .build()
+            )
+            .build())
     }
 
     override fun onResume() {
